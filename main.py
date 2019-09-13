@@ -6,15 +6,20 @@ from os.path import join, dirname, realpath
 import zipfile
 from .models import Album
 from . import db
+from .customvision import *
+import pandas as pd
+from PIL import Image, ImageFile
+from resizeimage import resizeimage
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 
 main = Blueprint('main', __name__)
 
 
 UPLOADS_PATH = join(dirname(realpath(__file__)), 'static/')
-
 UPLOAD_FOLDER = UPLOADS_PATH
-
 ALLOWED_EXTENSIONS = set(['zip'])
 
 
@@ -40,7 +45,6 @@ def upload_file():
         PATHR = UPLOAD_FOLDER + str(current_user.id) + file.filename.rsplit('.', 1)[0].lower()
         
         try :
-            ctp = PATHR + file.filename
             os.mkdir(PATHR)
 
         except FileExistsError :
@@ -67,6 +71,24 @@ def upload_file():
             db.session.add(new_album)
             db.session.commit()
 
+            it_path = str(PATHR + '/' + file.filename.rsplit('.', 1)[0].lower())
+
+            images = os.listdir(os.path.join(PATHR, file.filename.rsplit('.', 1)[0].lower()))
+
+            for i in images :
+                print(UPLOADS_PATH + i)
+                print('*' * 50)
+            #/home/matthieu/Documents/flask_auth_scotch/project/static/455363860522949706_7010342.jpg
+
+            for fichier in os.listdir(it_path):
+                with open(UPLOADS_PATH + file_path + '/' + fichier, 'r+b') as f:
+                    with Image.open(f) as image:
+                        cover = resizeimage.resize_cover(image, [224, 224])
+                        cover.save(UPLOADS_PATH + file_path + '/' + fichier, image.format)
+                        
+                        label = classify_photo(UPLOADS_PATH + file_path + '/' + fichier)
+                        print(label) 
+            
             return redirect(url_for('main.upload_file', filename=filename))
         
     return render_template('createalbum.html')
@@ -93,7 +115,6 @@ def albums() :
 
     for i in albums :
         train.append(i.album_name)
-
 
     if request.method == 'POST':
 
